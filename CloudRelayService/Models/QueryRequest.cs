@@ -1,4 +1,4 @@
-﻿namespace OutboundAgent.Models
+﻿namespace CloudRelayService.Models
 {
     public class QueryRequest
     {

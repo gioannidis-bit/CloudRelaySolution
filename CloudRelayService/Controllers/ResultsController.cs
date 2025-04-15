@@ -1,7 +1,16 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using System;
+using System.Data;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using CloudRelayService.Hubs; // Make sure this namespace matches your project
+using Newtonsoft.Json;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
-using CloudRelayService.Models;
 using System.Runtime.CompilerServices;
+using System.Threading.Channels;
 
 namespace CloudRelayService.Controllers
 {
@@ -9,150 +18,208 @@ namespace CloudRelayService.Controllers
     [Route("api/[controller]")]
     public class ResultsController : ControllerBase
     {
-        private readonly ILogger<ResultsController> _logger;
-        private readonly IConfiguration _configuration;
-        private readonly HubConnection _connection;
+        private readonly IHubContext<AgentHub> _hubContext;
+        private const int PageSize = 500; // Adjust chunk size if needed
 
-        public ResultsController(ILogger<ResultsController> logger, IConfiguration configuration)
+        public ResultsController(IHubContext<AgentHub> hubContext)
         {
-            _logger = logger;
-            _configuration = configuration;
-
-            // Initialize the hub connection
-            string hubUrl = _configuration["AgentHub:Url"] ?? "https://localhost:7197/hubs/agent";
-            _connection = new HubConnectionBuilder()
-                .WithUrl(hubUrl)
-                .WithAutomaticReconnect()
-                .Build();
-
-            // Start the connection asynchronously
-            _connection.StartAsync().ContinueWith(task =>
-            {
-                if (task.IsFaulted)
-                {
-                    _logger.LogError(task.Exception, "Failed to connect to agent hub");
-                }
-            });
+            _hubContext = hubContext;
         }
 
         /// <summary>
-        /// Gets the status of a query
+        /// Streaming endpoint that calls the agent to run a query (based on queryIndex) and returns data in chunks.
+        /// If destinationId is provided, performs bulk insert of the chunks into the destination server.
+        /// 
+        /// Call example:
+        /// GET https://192.168.14.121:7197/api/results/{agentId}/runstream?queryIndex=3&destinationId=YOUR_DESTINATION_ID
         /// </summary>
-        /// <param name="agentId">The ID of the agent</param>
-        /// <param name="queryId">The ID of the query</param>
-        /// <returns>Query status</returns>
-        [HttpGet("{agentId}/status/{queryId}")]
-        public async Task<ActionResult<QueryStatus>> GetQueryStatus(string agentId, string queryId)
-        {
-            try
-            {
-                _logger.LogInformation($"Getting status for query {queryId} from agent {agentId}");
-
-                if (_connection.State != HubConnectionState.Connected)
-                {
-                    await _connection.StartAsync();
-                }
-
-                var result = await _connection.InvokeAsync<QueryStatus>("GetQueryStatus", agentId, queryId);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Failed to get status for query {queryId} from agent {agentId}");
-                return StatusCode(500, "Failed to get query status");
-            }
-        }
-
-        /// <summary>
-        /// Runs a query on an agent
-        /// </summary>
-        /// <param name="agentId">The ID of the agent</param>
-        /// <param name="queryIndex">The index of the query</param>
-        /// <param name="destinationId">Optional destination ID</param>
-        /// <returns>Query result</returns>
-        [HttpGet("{agentId}/run")]
-        public async Task<ActionResult<QueryResult>> RunQuery(string agentId, [FromQuery] string queryIndex, [FromQuery] string? destinationId = null)
-        {
-            try
-            {
-                _logger.LogInformation($"Running query {queryIndex} on agent {agentId}");
-
-                if (_connection.State != HubConnectionState.Connected)
-                {
-                    await _connection.StartAsync();
-                }
-
-                var queryRequest = new QueryRequest
-                {
-                    Id = Guid.NewGuid().ToString(),
-                    AgentId = agentId,
-                    QueryIndex = queryIndex,
-                    DestinationId = destinationId
-                };
-
-                var result = await _connection.InvokeAsync<QueryResult>("ExecuteQuery", queryRequest);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Failed to run query {queryIndex} on agent {agentId}");
-                return StatusCode(500, "Failed to run query");
-            }
-        }
-
-        /// <summary>
-        /// Streams query results from an agent
-        /// </summary>
-        /// <param name="agentId">The ID of the agent</param>
-        /// <param name="queryIndex">The index of the query</param>
-        /// <param name="destinationId">Optional destination ID</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Stream of query data</returns>
         [HttpGet("{agentId}/runstream")]
-        public async IAsyncEnumerable<QueryDataChunk> RunQueryStream(
-            string agentId,
-            [FromQuery] string queryIndex,
-            [FromQuery] string? destinationId = null,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        public async IAsyncEnumerable<string> RunQueryStream(
+     string agentId,
+     [FromQuery] string queryIndex,
+     [FromQuery] string? destinationId,
+     [EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            _logger.LogInformation($"Streaming query {queryIndex} from agent {agentId}");
-
-            // Ensure connection before streaming
-            if (_connection.State != HubConnectionState.Connected)
+            // Check if agent exists
+            if (!AgentHub.Agents.TryGetValue(agentId, out var agent))
             {
-                try
-                {
-                    await _connection.StartAsync();
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, $"Failed to connect to hub for streaming query {queryIndex} from agent {agentId}");
-                    yield break; // Stop enumeration if connection fails
-                }
+                yield return $"Error: Agent {agentId} not found or not connected";
+                yield break;
             }
 
-            var queryId = Guid.NewGuid().ToString();
+            yield return $"Starting data stream from agent {agentId}...";
 
-            // Create the stream outside the try block
-            IAsyncEnumerable<QueryDataChunk> stream;
+            // Create a channel for data
+            var channel = Channel.CreateUnbounded<string>();
+
+            // Register the channel for this agent
+            if (AgentHub.QueryChannels.TryRemove(agentId, out _))
+            {
+                Console.WriteLine($"Replacing existing channel for agent {agentId}");
+            }
+
+            AgentHub.QueryChannels[agentId] = channel;
+            Console.WriteLine($"Channel created for agent {agentId}");
+
+            // Tell the agent to start streaming data
+            bool sendError = false;
+            string errorMessage = "";
 
             try
             {
-                // Use the correct streaming extension method
-                stream = _connection.StreamAsync<QueryDataChunk>(
-                    "StreamLargeQueryData",
-                    queryId);
+                Console.WriteLine($"Sending GetStreamData to agent {agentId}");
+                await _hubContext.Clients.Group(agentId).SendAsync("GetStreamData", queryIndex, cancellationToken);
+                Console.WriteLine($"GetStreamData sent to agent {agentId}");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error initializing stream for query {queryIndex} from agent {agentId}");
-                yield break; // Stop enumeration if stream initialization fails
+                Console.WriteLine($"Error sending GetStreamData to agent {agentId}: {ex.Message}");
+                errorMessage = ex.Message;
+                sendError = true;
             }
 
-            // Now use the stream outside the try-catch
-            await foreach (var chunk in stream.WithCancellation(cancellationToken))
+            if (sendError)
             {
-                yield return chunk;
+                AgentHub.QueryChannels.TryRemove(agentId, out _);
+                yield return $"Error starting data stream: {errorMessage}";
+                yield break;
+            }
+
+            // Read from the channel using the helper method
+            var reader = channel.Reader;
+            string dataChunk;
+
+            while ((dataChunk = await GetNextChunkSafely(reader, cancellationToken)) != null)
+            {
+                yield return dataChunk;
+            }
+
+            // Clean up
+            AgentHub.QueryChannels.TryRemove(agentId, out _);
+            Console.WriteLine($"Channel for agent {agentId} removed");
+
+            yield return "Data stream completed";
+        }
+
+        // Helper method to safely get the next chunk
+        private async Task<string> GetNextChunkSafely(ChannelReader<string> reader, CancellationToken token)
+        {
+            try
+            {
+                // Wait for data with a timeout
+                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(token, timeoutCts.Token);
+
+                if (!await reader.WaitToReadAsync(linkedCts.Token))
+                {
+                    Console.WriteLine("Channel completed");
+                    return null;
+                }
+
+                // Read the data
+                if (reader.TryRead(out string chunk))
+                {
+                    Console.WriteLine($"Read chunk of size {chunk?.Length ?? 0}");
+                    return chunk;
+                }
+                else
+                {
+                    Console.WriteLine("WaitToReadAsync returned true but TryRead failed");
+                    return null;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                Console.WriteLine("Operation timed out or was canceled");
+                return "Operation timed out or was canceled";
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error reading data: {ex.Message}");
+                return $"Error reading data: {ex.Message}";
+            }
+        }
+
+        private (string, string)? ExtractSchemaAndTableName(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+                return null;
+            query = query.Trim();
+            int fromIndex = query.IndexOf("FROM", StringComparison.OrdinalIgnoreCase);
+            if (fromIndex == -1)
+                return null;
+            string afterFrom = query.Substring(fromIndex + 4).Trim();
+            int spaceIndex = afterFrom.IndexOf(" ");
+            if (spaceIndex > 0)
+                afterFrom = afterFrom.Substring(0, spaceIndex);
+            string[] parts = afterFrom.Split('.');
+            for (int i = 0; i < parts.Length; i++)
+            {
+                parts[i] = parts[i].Trim().Trim('[', ']');
+            }
+            if (parts.Length == 0)
+                return null;
+            if (parts.Length == 1)
+                return ("dbo", parts[0]);
+            if (parts.Length == 2)
+                return (parts[0], parts[1]);
+            return (parts[1], parts[parts.Length - 1]);
+        }
+
+        private string BuildCreateTableDDL(DataTable dt, string schema, string tableName)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine($"CREATE TABLE [{schema}].[{tableName}] (");
+            foreach (DataColumn col in dt.Columns)
+            {
+                string sqlType = MapType(col.DataType);
+                sb.AppendLine($"    [{col.ColumnName}] {sqlType} NULL,");
+            }
+            if (dt.Columns.Count > 0)
+            {
+                sb.Length -= 3;
+                sb.AppendLine();
+            }
+            sb.Append(");");
+            return sb.ToString();
+        }
+
+        private string MapType(Type type)
+        {
+            if (type == typeof(string))
+                return "nvarchar(max)";
+            if (type == typeof(int))
+                return "int";
+            if (type == typeof(long))
+                return "bigint";
+            if (type == typeof(decimal))
+                return "decimal(18,2)";
+            if (type == typeof(double))
+                return "float";
+            if (type == typeof(DateTime))
+                return "datetime";
+            if (type == typeof(bool))
+                return "bit";
+            return "nvarchar(max)";
+        }
+
+        private async Task BulkInsertWithPaging(SqlConnection sqlConn, DataTable dt, string fullTableName, int pageSize)
+        {
+            int totalRows = dt.Rows.Count;
+            for (int offset = 0; offset < totalRows; offset += pageSize)
+            {
+                DataTable dtPage = dt.Clone();
+                int rowsToCopy = Math.Min(pageSize, totalRows - offset);
+                for (int i = 0; i < rowsToCopy; i++)
+                {
+                    dtPage.ImportRow(dt.Rows[offset + i]);
+                }
+                using (var bulkCopy = new SqlBulkCopy(sqlConn))
+                {
+                    bulkCopy.DestinationTableName = fullTableName;
+                    bulkCopy.BulkCopyTimeout = 300; // Timeout in seconds
+                    await bulkCopy.WriteToServerAsync(dtPage);
+                }
             }
         }
     }

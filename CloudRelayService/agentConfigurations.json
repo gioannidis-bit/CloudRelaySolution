@@ -2,8 +2,8 @@
   "2e1116e1-09c3-4ead-9a7e-cca4fc86b566": {
     "Connections": [
       {
-        "Id": "7a6776e4-48d5-4142-9509-a8f8b65f39fb",
-        "ConnectionString": "server=demosrv;user id=proteluser;password=protel915930;TrustServerCertificate=True;",
+        "Id": "19d5d591-183a-4c3b-8693-8859bd0d8733",
+        "ConnectionString": "server=demosrv;user id=sa;password=hitprotel;TrustServerCertificate=True;",
         "Queries": [
           "select * from webpos.dbo.accounts",
           "SELECT TOP (1000) [date]      ,[OccPerDay]      ,[OccPerMonth]  FROM [Protel].[proteluser].[hitstat_occupancy]",
