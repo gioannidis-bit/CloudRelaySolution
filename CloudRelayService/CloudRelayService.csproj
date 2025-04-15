@@ -10,22 +10,18 @@
     <Compile Remove="Data\**" />
     <Compile Remove="Helpers\**" />
     <Compile Remove="Migrations\**" />
-    <Compile Remove="Models\**" />
     <Compile Remove="Views\**" />
     <Content Remove="Data\**" />
     <Content Remove="Helpers\**" />
     <Content Remove="Migrations\**" />
-    <Content Remove="Models\**" />
     <Content Remove="Views\**" />
     <EmbeddedResource Remove="Data\**" />
     <EmbeddedResource Remove="Helpers\**" />
     <EmbeddedResource Remove="Migrations\**" />
-    <EmbeddedResource Remove="Models\**" />
     <EmbeddedResource Remove="Views\**" />
     <None Remove="Data\**" />
     <None Remove="Helpers\**" />
     <None Remove="Migrations\**" />
-    <None Remove="Models\**" />
     <None Remove="Views\**" />
   </ItemGroup>
 
@@ -35,6 +31,11 @@
     <Compile Remove="Controllers\MinimalReproController.cs" />
     <Compile Remove="Controllers\SimulationController.cs" />
     <Compile Remove="Controllers\WeatherForecastController.cs" />
+    <Compile Remove="Models\AgentConfig.cs" />
+    <Compile Remove="Models\AgentConfigCollection.cs" />
+    <Compile Remove="Models\AgentData.cs" />
+    <Compile Remove="Models\QueryCollection.cs" />
+    <Compile Remove="QueryCollection.cs" />
     <Compile Remove="UpdateDataRequest.cs" />
   </ItemGroup>
 

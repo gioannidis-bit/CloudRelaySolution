@@ -1,118 +1,116 @@
-﻿using Microsoft.AspNetCore.SignalR;
-using Microsoft.Data.SqlClient;
-using Newtonsoft.Json;
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Data;
-using System.Linq;
+﻿using CloudRelayService.Models;
+using Microsoft.AspNetCore.SignalR;
 using System.Runtime.CompilerServices;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace CloudRelayService.Hubs
 {
     public class AgentHub : Hub
     {
-        // In-memory store for connected agents.
-        public static ConcurrentDictionary<string, AgentInfo> Agents = new ConcurrentDictionary<string, AgentInfo>();
+        private readonly ILogger<AgentHub> _logger;
 
-        // Dictionary to store pending query requests (non-streaming).
-        public static ConcurrentDictionary<string, TaskCompletionSource<string>> QueryCompletionSources
-            = new ConcurrentDictionary<string, TaskCompletionSource<string>>();
-
-        public async Task RegisterAgent(string agentId, string primaryName, string customName)
+        public AgentHub(ILogger<AgentHub> logger)
         {
-            AgentConfiguration existingConfig = null;
-            AgentConfigurationStore.Configurations.TryGetValue(agentId, out existingConfig);
-
-            var info = new AgentInfo
-            {
-                AgentId = agentId,
-                PrimaryName = primaryName,
-                CustomName = (existingConfig != null && !string.IsNullOrWhiteSpace(existingConfig.CustomAgentName))
-                                ? existingConfig.CustomAgentName
-                                : customName,
-                ConnectionId = Context.ConnectionId,
-                IsOnline = true,
-                LastConnected = DateTime.UtcNow,
-                Configuration = existingConfig ?? new AgentConfiguration()
-            };
-
-            Agents[agentId] = info;
-            await Clients.All.SendAsync("AgentStatusChanged", info);
-
-            if (existingConfig != null)
-            {
-                await Clients.Client(Context.ConnectionId).SendAsync("UpdateConfig", existingConfig);
-            }
+            _logger = logger;
         }
 
-        public async Task SendData(string agentId, string jsonData)
+        /// <summary>
+        /// Adds a new agent to the hub
+        /// </summary>
+        /// <param name="agentId"></param>
+        /// <returns></returns>
+        public async Task RegisterAgent(string agentId)
         {
-            if (Agents.TryGetValue(agentId, out var agent))
-            {
-                agent.LatestData = jsonData;
-                await Clients.All.SendAsync("AgentDataUpdated", agentId, jsonData);
+            await Groups.AddToGroupAsync(Context.ConnectionId, agentId);
+            _logger.LogInformation($"Agent {agentId} connected with connection id {Context.ConnectionId}");
+        }
 
-                if (QueryCompletionSources.TryRemove(agentId, out var tcs))
+        /// <summary>
+        /// Removes an agent from the hub
+        /// </summary>
+        /// <param name="agentId"></param>
+        /// <returns></returns>
+        public async Task UnregisterAgent(string agentId)
+        {
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, agentId);
+            _logger.LogInformation($"Agent {agentId} disconnected");
+        }
+
+        /// <summary>
+        /// Gets the status for a query
+        /// </summary>
+        /// <param name="agentId"></param>
+        /// <param name="queryId"></param>
+        /// <returns></returns>
+        public async Task<QueryStatus> GetQueryStatus(string agentId, string queryId)
+        {
+            _logger.LogInformation($"Getting status for query {queryId} from agent {agentId}");
+            return await Task.FromResult(new QueryStatus
+            {
+                Id = queryId,
+                Status = "Unknown"
+            });
+        }
+
+        /// <summary>
+        /// Executes a query on an agent
+        /// </summary>
+        /// <param name="query"></param>
+        /// <returns></returns>
+        public async Task<QueryResult> ExecuteQuery(QueryRequest query)
+        {
+            _logger.LogInformation($"Executing query {query.Id} on agent {query.AgentId}");
+
+            // Forward the query to the agent
+            await Clients.Group(query.AgentId).SendAsync("QueryReceived", query);
+
+            // Return a placeholder result
+            return await Task.FromResult(new QueryResult
+            {
+                Id = query.Id,
+                Result = "Query received"
+            });
+        }
+
+        /// <summary>
+        /// Streams large query data
+        /// </summary>
+        /// <param name="queryId">The ID of the query</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Stream of query data</returns>
+        public async IAsyncEnumerable<QueryDataChunk> StreamLargeQueryData(
+            string queryId,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            _logger.LogInformation($"Streaming data for query {queryId}");
+
+            // Placeholder implementation - replace with your actual data streaming logic
+            for (int i = 0; i < 10; i++)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                    yield break;
+
+                yield return new QueryDataChunk
                 {
-                    tcs.SetResult(jsonData);
-                }
+                    QueryId = queryId,
+                    ChunkId = i.ToString(),
+                    Data = $"Data chunk {i} for query {queryId}",
+                    IsLastChunk = i == 9
+                };
+
+                await Task.Delay(100, cancellationToken);
             }
         }
 
-        public async Task SendDataChunk(string agentId, string chunk)
+        public override async Task OnConnectedAsync()
         {
-            // Forward the chunk to all connected clients.
-            await Clients.All.SendAsync("AgentDataChunk", agentId, chunk);
+            _logger.LogInformation($"Client connected: {Context.ConnectionId}");
+            await base.OnConnectedAsync();
         }
 
-        public async Task TestConnectionResult(string agentId, string result)
+        public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            if (Agents.TryGetValue(agentId, out var agent))
-            {
-                agent.LatestData = result;
-                await Clients.All.SendAsync("AgentTestConnectionResult", agentId, result);
-            }
-        }
-
-        public override async Task OnDisconnectedAsync(Exception exception)
-        {
-            var agent = Agents.Values.FirstOrDefault(a => a.ConnectionId == Context.ConnectionId);
-            if (agent != null)
-            {
-                agent.IsOnline = false;
-                agent.LastDisconnected = DateTime.UtcNow;
-                await Clients.All.SendAsync("AgentStatusChanged", agent);
-            }
+            _logger.LogInformation($"Client disconnected: {Context.ConnectionId}");
             await base.OnDisconnectedAsync(exception);
         }
-    }
-
-    public class AgentInfo
-    {
-        public string AgentId { get; set; }
-        public string ConnectionId { get; set; }
-        public string PrimaryName { get; set; }
-        public string CustomName { get; set; }
-        public bool IsOnline { get; set; }
-        public DateTime LastConnected { get; set; }
-        public DateTime? LastDisconnected { get; set; }
-        public AgentConfiguration Configuration { get; set; }
-        public string LatestData { get; set; }
-    }
-
-    public class AgentConfiguration
-    {
-        public List<ConnectionConfig> Connections { get; set; } = new List<ConnectionConfig>();
-        public string CustomAgentName { get; set; }
-    }
-
-    public class ConnectionConfig
-    {
-        public string Id { get; set; }
-        public string ConnectionString { get; set; }
-        public List<string> Queries { get; set; } = new List<string>();
     }
 }
