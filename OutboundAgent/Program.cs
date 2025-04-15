@@ -63,7 +63,7 @@ namespace AgentClient
             Console.WriteLine("Primary Agent Name (Computer Name): " + agentPrimaryName);
 
             var connection = new HubConnectionBuilder()
-                .WithUrl("https://192.168.14.121:7197/agentHub", options =>
+                .WithUrl("https://195.46.18.174:7197/agentHub", options =>
                 {                 
                     options.HttpMessageHandlerFactory = (handler) =>
                     {

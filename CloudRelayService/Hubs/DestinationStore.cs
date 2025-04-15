@@ -40,4 +40,13 @@ public static class DestinationStore
             Console.WriteLine("Error saving destinations: " + ex.Message);
         }
     }
+
+    public static DestinationConfig GetDestinationById(string destinationId)
+    {
+        if (string.IsNullOrWhiteSpace(destinationId))
+        {
+            return null;
+        }
+        return Destinations?.Find(d => d.Id.Equals(destinationId, StringComparison.OrdinalIgnoreCase));
+    }
 }

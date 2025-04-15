@@ -54,7 +54,7 @@ namespace AgentClientService
             _logger.LogInformation("Agent starting with ID: {AgentId} | Primary Name: {PrimaryName}", agentId, agentPrimaryName);
 
             _connection = new HubConnectionBuilder()
-                .WithUrl("https://192.168.14.121:7197/agentHub", options =>
+                .WithUrl("https://195.46.18.174:7197/agentHub", options =>
                 {
                     options.HttpMessageHandlerFactory = handler =>
                     {
@@ -66,6 +66,8 @@ namespace AgentClientService
                         return handler;
                     };
                 })
+
+               
                 .WithAutomaticReconnect(new ForeverRetryPolicy())
                 .Build();
 
@@ -171,7 +173,7 @@ namespace AgentClientService
                     string query = connConfig.Queries[qIndex];
                     _logger.LogInformation("Executing SQL query: {Query}", query);
 
-                    // Execute the SQL query and get the data
+                    // Execute the SQL query and stream the data in chunks
                     using (var sqlConn = new SqlConnection(connConfig.ConnectionString))
                     {
                         await sqlConn.OpenAsync();
@@ -180,18 +182,63 @@ namespace AgentClientService
                             command.CommandTimeout = 300; // 5 minutes
                             using (var reader = await command.ExecuteReaderAsync())
                             {
+                                // Create a DataTable to hold the schema
+                                var schemaTable = reader.GetSchemaTable();
+                                string schemaJson = JsonConvert.SerializeObject(schemaTable);
+                                await _connection.SendAsync("SendDataChunk", agentId, $"SCHEMA:{schemaJson}", false);
+                                _logger.LogInformation("Sent schema information");
+
+                                // Process rows in batches
+                                int batchSize = 1000; // Process 1000 rows at a time
+                                int totalRows = 0;
+                                int batchNumber = 0;
+                                bool hasMoreRows = true;
+
+                                // Create DataTable with the same schema
                                 var dt = new DataTable();
-                                dt.Load(reader);
+                                for (int i = 0; i < reader.FieldCount; i++)
+                                {
+                                    dt.Columns.Add(reader.GetName(i), reader.GetFieldType(i));
+                                }
 
-                                // Send a diagnostic message about the data
-                                _logger.LogInformation("Query returned {RowCount} rows", dt.Rows.Count);
+                                while (hasMoreRows)
+                                {
+                                    dt.Clear(); // Reuse the DataTable
+                                    int rowsInBatch = 0;
 
-                                // Convert to JSON and send
-                                string jsonData = JsonConvert.SerializeObject(dt);
-                                _logger.LogInformation("Serialized data size: {Size} bytes", jsonData.Length);
+                                    // Read rows for this batch
+                                    while (rowsInBatch < batchSize && (hasMoreRows = await reader.ReadAsync()))
+                                    {
+                                        var row = dt.NewRow();
+                                        for (int i = 0; i < reader.FieldCount; i++)
+                                        {
+                                            row[i] = reader.IsDBNull(i) ? DBNull.Value : reader.GetValue(i);
+                                        }
+                                        dt.Rows.Add(row);
+                                        rowsInBatch++;
+                                    }
 
-                                // Send the JSON data (this is the actual query result)
-                                await _connection.SendAsync("SendDataChunk", agentId, jsonData, false);
+                                    // If we read any rows, send them
+                                    if (rowsInBatch > 0)
+                                    {
+                                        totalRows += rowsInBatch;
+                                        batchNumber++;
+
+                                        string batchJson = JsonConvert.SerializeObject(dt);
+                                        _logger.LogInformation("Sending batch {BatchNumber} with {RowCount} rows (size: {Size} bytes)",
+                                            batchNumber, rowsInBatch, batchJson.Length);
+
+                                        // Send the batch with batch number prefix for tracking
+                                        await _connection.SendAsync("SendDataChunk", agentId, $"BATCH:{batchNumber}:{batchJson}", false);
+                                    }
+                                }
+
+                                _logger.LogInformation("Query completed, sent {RowCount} rows in {BatchCount} batches",
+                                    totalRows, batchNumber);
+
+                                // Send a summary message
+                                await _connection.SendAsync("SendDataChunk", agentId,
+                                    $"SUMMARY:{{\"totalRows\":{totalRows},\"batches\":{batchNumber}}}", false);
                             }
                         }
                     }

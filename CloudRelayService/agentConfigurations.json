@@ -26,5 +26,17 @@
       }
     ],
     "CustomAgentName": "debug"
+  },
+  "d6b7feaa-8f70-458b-ab19-ba4454a2e928": {
+    "Connections": [
+      {
+        "Id": "b6667bd7-11fd-474b-a54e-7857813203ad",
+        "ConnectionString": "server=127.0.0.1;user id=proteluser;password=protel915930;TrustServerCertificate=True;",
+        "Queries": [
+          "select  top 1000 * from protel.proteluser.hitia_3"
+        ]
+      }
+    ],
+    "CustomAgentName": "Makedonia Palace"
   }
 }

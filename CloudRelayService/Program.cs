@@ -1,32 +1,31 @@
-using CloudRelayService.Hubs;
+ο»Ώusing CloudRelayService.Hubs;
+using Microsoft.AspNetCore.SignalR.Protocol;
+using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Αυξάνουμε το max request body size (π.χ., 100 MB)
+// Increase max request body size (1GB)
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.Limits.MaxRequestBodySize = 1000L * 1024 * 1024; // 1GB
+    options.Limits.MaxRequestBodySize = 1000L * 1024 * 1024;
 });
 
 builder.Services.AddRazorPages();
 builder.Services.AddControllers();
+
+// Add SignalR with MessagePack protocol registered.
 builder.Services.AddSignalR(options =>
 {
     options.EnableDetailedErrors = true;
-    // Set the maximum receive message size to 10 MB.
-    options.MaximumReceiveMessageSize = 1000L * 1024 * 1024; // 1GB (για SignalR, αν χρειάζεται)
+    options.MaximumReceiveMessageSize = 1000L * 1024 * 1024; // 1GB
 });
+
 
 var app = builder.Build();
 
 app.UseStaticFiles();
-
-// If you have old static files that conflict, disable default files:
-// app.UseDefaultFiles();
-
 app.MapRazorPages();
 app.MapControllers();
 app.MapHub<AgentHub>("/agentHub");
 
 app.Run();
-

@@ -8,19 +8,15 @@
 
   <ItemGroup>
     <Compile Remove="Data\**" />
-    <Compile Remove="Helpers\**" />
     <Compile Remove="Migrations\**" />
     <Compile Remove="Views\**" />
     <Content Remove="Data\**" />
-    <Content Remove="Helpers\**" />
     <Content Remove="Migrations\**" />
     <Content Remove="Views\**" />
     <EmbeddedResource Remove="Data\**" />
-    <EmbeddedResource Remove="Helpers\**" />
     <EmbeddedResource Remove="Migrations\**" />
     <EmbeddedResource Remove="Views\**" />
     <None Remove="Data\**" />
-    <None Remove="Helpers\**" />
     <None Remove="Migrations\**" />
     <None Remove="Views\**" />
   </ItemGroup>
@@ -52,6 +48,7 @@
     <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.4" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client.Core" Version="9.0.4" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="9.0.4" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.4" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Abstractions" Version="9.0.4" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Analyzers" Version="9.0.4" />
