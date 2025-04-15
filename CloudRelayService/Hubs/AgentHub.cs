@@ -80,7 +80,7 @@ namespace CloudRelayService.Hubs
         // Called by the agent to send individual streamed data chunks.
      
         // Called by the agent to send individual streamed data chunks with last chunk flag.
-        public async Task SendDataChunk(string agentId, string chunk, bool isLastChunk)
+        public async Task SendDataChunk(string agentId, string chunk, bool isLastChunk = false)
         {
             Console.WriteLine($"Received chunk from agent {agentId} (size: {chunk.Length} bytes)");
 

@@ -138,7 +138,7 @@ namespace AgentClientService
                 try
                 {
                     // Send a start message
-                    await _connection.SendAsync("SendDataChunk", agentId, "Starting query execution...");
+                    await _connection.SendAsync("SendDataChunk", agentId, "Starting query execution...", false);
 
                     // Parse the query index
                     if (!int.TryParse(queryIndex, out int qIndex))
@@ -191,7 +191,7 @@ namespace AgentClientService
                                 _logger.LogInformation("Serialized data size: {Size} bytes", jsonData.Length);
 
                                 // Send the JSON data (this is the actual query result)
-                                await _connection.SendAsync("SendDataChunk", agentId, jsonData);
+                                await _connection.SendAsync("SendDataChunk", agentId, jsonData, false);
                             }
                         }
                     }
