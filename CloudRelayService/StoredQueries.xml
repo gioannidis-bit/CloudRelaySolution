@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<StoredQueries xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <StoredQuery>
+    <Id>2</Id>
+    <QueryText>SELECT *  FROM APITEST.dbo.Table1</QueryText>
+    <Description>All records from table1..</Description>
+    <CreatedOn>2025-04-10T17:57:33.4265848Z</CreatedOn>
+  </StoredQuery>
+  <StoredQuery>
+    <Id>3</Id>
+    <QueryText>select  * from webpos.dbo.accounts</QueryText>
+    <Description>bullshit</Description>
+    <CreatedOn>2025-04-10T20:00:02.4569704Z</CreatedOn>
+  </StoredQuery>
+  <StoredQuery>
+    <Id>4</Id>
+    <QueryText>select * from protel.proteluser.hitia_3</QueryText>
+    <Description>Divanis hitia_3</Description>
+    <CreatedOn>2025-04-11T08:40:52.9324973Z</CreatedOn>
+  </StoredQuery>
+  <StoredQuery>
+    <Id>5</Id>
+    <QueryText>select * from hitia_3</QueryText>
+    <Description>adsfgd</Description>
+    <CreatedOn>2025-04-11T08:42:23.6850065Z</CreatedOn>
+  </StoredQuery>
+</StoredQueries>

@@ -1,0 +1,158 @@
+﻿@page "/"
+@model IndexModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Agents Dashboard";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<table class="table table-bordered" id="agentsTable">
+    <thead>
+        <tr>
+            <th>Agent ID</th>
+            <th>Primary Name</th>
+            <th>Friendly Name</th>
+            <th>Status</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var agent in Model.Agents)
+        {
+            <tr>
+                <td>@agent.AgentId</td>
+                <td>@agent.PrimaryName</td>
+                <td>@agent.CustomName</td>
+                <td style="background-color:@(agent.IsOnline ? "green" : "red"); color:white;">
+                    @(agent.IsOnline ? "Online" : "Offline")
+                </td>
+                <td>
+                    <a href="@Url.Page("/EditConfig", new { agentId = agent.AgentId })" class="btn btn-sm btn-primary">Edit</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<!-- Container for live query results (formatted) -->
+<div class="mt-4">
+    <h4>Live Query Results</h4>
+    <pre id="queryResults" style="white-space: pre-wrap; background-color: #f8f8f8; padding: 10px;"></pre>
+</div>
+
+<div class="mt-3">
+    <h4>Live Test Connection Result</h4>
+    <pre id="testResult" style="white-space: pre-wrap; background-color: #f0f0f0; padding: 10px;"></pre>
+</div>
+
+<!-- Νέα ενότητα για Streaming -->
+<div class="mt-4">
+    <h4>Stream Agent Data</h4>
+    <button id="startStream" class="btn btn-success mb-2">Start Streaming</button>
+    <pre id="streamOutput" style="white-space: pre-wrap; background-color: #e9ecef; padding: 10px;"></pre>
+</div>
+
+@section Scripts {
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.0/signalr.min.js"></script>
+        <script>
+            // Establish a SignalR connection.
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl("/agentHub")
+                .withAutomaticReconnect()
+                .build();
+
+            connection.on("AgentStatusChanged", function (agent) {
+                console.log("AgentStatusChanged event received:", agent);
+                loadAgents();
+            });
+
+            connection.on("AgentDataUpdated", function (agentId, jsonData) {
+                console.log("Received data update from agent", agentId, jsonData);
+                // Format and display the query results in the live results container.
+                let output = `Agent ${agentId} Query Results:\n`;
+                try {
+                    const results = JSON.parse(jsonData);
+                    results.forEach(conn => {
+                        output += `Connection: ${conn.ConnectionId}\n`;
+                        conn.QueryResults.forEach(qr => {
+                            if (qr.Error) {
+                                output += `  Query: ${qr.Query}\n  ERROR: ${qr.Error}\n\n`;
+                            } else {
+                                output += `  Query: ${qr.Query}\n  Data: ${qr.Data}\n\n`;
+                            }
+                        });
+                    });
+                } catch (e) {
+                    output += "Error parsing JSON data: " + e;
+                }
+                document.getElementById("queryResults").innerText = output;
+                loadAgents();
+            });
+
+            connection.on("AgentTestConnectionResult", function (agentId, result) {
+                console.log("Test connection result received for agent", agentId, ":", result);
+                document.getElementById("testResult").innerText = "Agent " + agentId + ": " + result;
+            });
+
+            connection.start().catch(function (err) {
+                console.error("SignalR connection error:", err.toString());
+            });
+
+            async function loadAgents() {
+                try {
+                    const response = await fetch('/api/agent');
+                    if (!response.ok) {
+                        console.error("Failed to load agents.");
+                        return;
+                    }
+                    const agents = await response.json();
+                    updateAgentsTable(agents);
+                } catch (err) {
+                    console.error("Error loading agents:", err);
+                }
+            }
+
+            function updateAgentsTable(agents) {
+                let html = '';
+                agents.forEach(agent => {
+                    html += `<tr>
+                                <td>${agent.agentId}</td>
+                                <td>${agent.primaryName || ""}</td>
+                                <td>${agent.customName || ""}</td>
+                                <td style="background-color:${agent.isOnline ? "green" : "red"}; color:white;">
+                                    ${agent.isOnline ? "Online" : "Offline"}
+                                </td>
+                                <td><a href="/EditConfig/${agent.agentId}" class="btn btn-sm btn-primary">Edit</a></td>
+                             </tr>`;
+                });
+                document.querySelector("#agentsTable tbody").innerHTML = html;
+            }
+
+            // Refresh agents table every 10 seconds.
+            setInterval(loadAgents, 10000);
+
+
+        // Νέος κώδικας για streaming:
+        document.getElementById("startStream").addEventListener("click", function () {
+            // Καλέστε τη μέθοδο streaming "StreamAgentData" (παράμετρος, π.χ., "1" για queryIndex)
+            const stream = connection.stream("StreamAgentData", "3");
+            const streamOutput = document.getElementById("streamOutput");
+            streamOutput.textContent = ""; // Καθαρίζουμε την προηγούμενη έξοδο
+            stream.subscribe({
+                next: chunk => {
+                    console.log("Received chunk:", chunk);
+                    streamOutput.textContent += chunk + "\n";
+                },
+                complete: () => {
+                    console.log("Streaming complete");
+                },
+                error: err => {
+                    console.error("Streaming error:", err);
+                    streamOutput.textContent += "Streaming error: " + err;
+                }
+            });
+        });
+
+        </script>
+}

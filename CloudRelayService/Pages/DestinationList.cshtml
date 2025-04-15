@@ -1,0 +1,41 @@
+﻿@page "/DestinationList"
+@model DestinationListModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Destination List";
+}
+
+<h1>Destination List</h1>
+
+<div class="mb-3">
+    <a class="btn btn-success" href="/DestinationConfig">Add New Destination</a>
+</div>
+
+@if (TempData["Message"] != null)
+{
+    <div class="alert alert-success">@TempData["Message"]</div>
+}
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Connection String</th>
+            <th>Table Name</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var dest in Model.Destinations)
+        {
+            <tr>
+                <td>@dest.Id</td>
+                <td>@dest.ConnectionString</td>
+                <td>@dest.TableName</td>
+                <td>
+                    <a href="/DestinationConfig/@dest.Id" class="btn btn-sm btn-primary">Edit</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

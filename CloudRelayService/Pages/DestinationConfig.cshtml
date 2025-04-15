@@ -1,0 +1,85 @@
+﻿@page "/DestinationConfig/{destinationId?}"
+@model DestinationConfigModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Destination Configuration";
+}
+
+<h1>Destination Configuration</h1>
+
+<form method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="DestinationId" value="@Model.DestinationId" />
+
+    <div class="mb-3">
+        <label class="form-label">Host or IP:</label>
+        <input type="text" name="Configuration.HostOrIp" class="form-control" value="@Model.Configuration.HostOrIp" />
+        <span asp-validation-for="Configuration.HostOrIp" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Instance (optional):</label>
+        <input type="text" name="Configuration.Instance" class="form-control" value="@Model.Configuration.Instance" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">SQL Port:</label>
+        <input type="number" name="Configuration.Port" class="form-control" value="@Model.Configuration.Port" />
+        <span asp-validation-for="Configuration.Port" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Username:</label>
+        <input type="text" name="Configuration.Username" class="form-control" value="@Model.Configuration.Username" />
+        <span asp-validation-for="Configuration.Username" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Password:</label>
+        <input type="password" name="Configuration.Password" class="form-control" value="@Model.Configuration.Password" />
+        <span asp-validation-for="Configuration.Password" class="text-danger"></span>
+    </div>
+ 
+
+    <button type="button" class="btn btn-info mb-3" onclick="discoverDatabases()">Discover Databases</button>
+    <div id="dbSuggestions" class="mb-3"></div>
+
+    <div class="mb-3">
+        <label class="form-label">Select Database:</label>
+        <select id="selectedDatabase" name="Configuration.Database" class="form-select">
+            <option value="">-- Choose database --</option>
+        </select>
+        <span asp-validation-for="Configuration.Database" class="text-danger"></span>
+    </div>
+
+   
+  
+
+  
+
+    <button type="submit" name="command" value="Save" class="btn btn-primary">Save</button>
+    <button type="submit" name="command" value="SaveAndReturn" class="btn btn-secondary">Save & Return</button>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        async function discoverDatabases() {
+            const host = document.querySelector('[name="Configuration.HostOrIp"]').value;
+            const instance = document.querySelector('[name="Configuration.Instance"]').value;
+            const port = document.querySelector('[name="Configuration.Port"]').value;
+            const username = document.querySelector('[name="Configuration.Username"]').value;
+            const password = document.querySelector('[name="Configuration.Password"]').value;
+            let url = `/api/sqlinfo/databases?host=${encodeURIComponent(host)}&instance=${encodeURIComponent(instance)}&port=${encodeURIComponent(port)}&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("Discovery failed");
+                const json = await response.json();
+                const select = document.getElementById("selectedDatabase");
+                select.innerHTML = "<option value=''>-- Choose database --</option>";
+                json.forEach(db => {
+                    select.innerHTML += `<option value="${db.name}">${db.name}</option>`;
+                });
+                document.getElementById("dbSuggestions").innerHTML = "<p class='text-success'>Databases loaded.</p>";
+            } catch (err) {
+                document.getElementById("dbSuggestions").innerHTML = `<p class="text-danger">Error: ${err.message}</p>`;
+            }
+        }      
+    </script>
+}

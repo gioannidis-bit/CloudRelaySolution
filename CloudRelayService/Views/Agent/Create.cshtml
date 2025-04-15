@@ -1,0 +1,75 @@
+﻿@model CloudRelayService.Models.AgentConfig
+@{
+    ViewData["Title"] = "Add New Agent Configuration";
+}
+
+<h2>@ViewData["Title"]</h2>
+
+<form asp-action="Create" method="post">
+    <div class="form-group">
+        <label asp-for="Name"></label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="ConnectionString"></label>
+        <input asp-for="ConnectionString" class="form-control" id="connectionStringInput" />
+        <span asp-validation-for="ConnectionString" class="text-danger"></span>
+    </div>
+    <!-- Button to test connection -->
+    <div class="form-group">
+        <button type="button" id="testConnectionBtn" class="btn btn-info">Test Connection</button>
+    </div>
+    <!-- Drop-down to select table/view -->
+    <div class="form-group">
+        <label for="tablesDropdown">Select Table/View</label>
+        <select id="tablesDropdown" name="TablesOrViews" class="form-control">
+            <option value="">--Select Table/View--</option>
+        </select>
+        <span class="text-danger" id="dropdownError"></span>
+    </div>
+    <div class="form-group">
+        <input type="submit" value="Create" class="btn btn-primary" />
+    </div>
+</form>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            // When the Test Connection button is clicked...
+            $("#testConnectionBtn").click(function () {
+                var connectionString = $("#connectionStringInput").val();
+                if (!connectionString) {
+                    $("#dropdownError").text("Please enter a connection string.");
+                    return;
+                } else {
+                    $("#dropdownError").text("");
+                }
+                // Call the API endpoint.
+                $.ajax({
+                    url: '/AgentConfigApi/TestConnection',
+                    data: { connectionString: connectionString },
+                    type: 'GET',
+                    success: function (data) {
+                        // Clear the existing dropdown options.
+                        var dropdown = $("#tablesDropdown");
+                        dropdown.empty();
+                        dropdown.append('<option value="">--Select Table/View--</option>');
+                        // Loop through returned data (the list of table/view names).
+                        $.each(data, function (i, item) {
+                            dropdown.append($('<option>', {
+                                value: item,
+                                text : item
+                            }));
+                        });
+                    },
+                    error: function (xhr, status, error) {
+                        $("#dropdownError").text("Error: " + xhr.responseText);
+                    }
+                });
+            });
+        });
+    </script>
+
+    <partial name="_ValidationScriptsPartial" />
+}

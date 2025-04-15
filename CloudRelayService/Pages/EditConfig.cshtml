@@ -1,0 +1,81 @@
+﻿@page "/EditConfig/{agentId}"
+@model EditConfigModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Edit Agent Configuration";
+}
+
+<h1>Edit Agent Configuration</h1>
+<p><strong>Agent ID:</strong> @Model.AgentId</p>
+<p><strong>Computer Name:</strong> @Model.DisplayPrimaryName</p>
+
+<form method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="AgentId" value="@Model.AgentId" />
+
+    <div class="mb-3">
+        <label class="form-label">Friendly Name:</label>
+        <input type="text" name="CustomName" class="form-control" placeholder="Enter friendly name" value="@Model.CustomName" />
+        <span asp-validation-for="CustomName" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Connection String:</label>
+        <input type="text" name="Configuration.ConnectionString" class="form-control" value="@Model.Configuration.ConnectionString" />
+        <span asp-validation-for="Configuration.ConnectionString" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Queries (one per line):</label>
+        <!-- Use a textarea to allow multiple queries -->
+        <textarea name="Configuration.QueriesInput" class="form-control" rows="5" placeholder="Enter one query per line">@Model.Configuration.QueriesInput</textarea>
+        <span asp-validation-for="Configuration.QueriesInput" class="text-danger"></span>
+    </div>
+    <!-- Two buttons: Save (stays on page) and Save and Return. -->
+    <button type="submit" name="command" value="Save" class="btn btn-primary">Save</button>
+    <button type="submit" name="command" value="SaveAndReturn" class="btn btn-secondary">Save &amp; Return</button>
+</form>
+
+<!-- Test Connection Button and Result Display -->
+<div class="mt-4">
+    <button id="testConnectionBtn" type="button" class="btn btn-secondary">Test Connection</button>
+    <p id="testConnectionResult" class="mt-2 text-info"></p>
+</div>
+
+@section Scripts {
+        <partial name="_ValidationScriptsPartial" />
+        <script>
+            // When the Test Connection button is clicked, send the API call.
+            document.getElementById("testConnectionBtn").addEventListener("click", async function () {
+                const agentId = '@Model.AgentId';
+                const resultDisplay = document.getElementById("testConnectionResult");
+                resultDisplay.innerText = "Testing connection...";
+                try {
+                    // Issue the API call; we log the response but don't update the result display here.
+                    const response = await fetch(`/api/testconnection/${agentId}/test`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    const resultText = await response.text();
+                    console.log("Fetch response:", resultText);
+                } catch (err) {
+                    resultDisplay.innerText = "Error: " + err.toString();
+                }
+            });
+
+            // Establish a SignalR connection to listen for test connection results.
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl("/agentHub")
+                .withAutomaticReconnect()
+                .build();
+
+            connection.on("AgentTestConnectionResult", function (agentId, result) {
+                console.log("AgentTestConnectionResult received:", agentId, result);
+                if (agentId === '@Model.AgentId') {
+                    document.getElementById("testConnectionResult").innerText = "Test Result: " + result;
+                }
+            });
+
+            connection.start().catch(function (err) {
+                console.error("SignalR connection error:", err.toString());
+            });
+        </script>
+}

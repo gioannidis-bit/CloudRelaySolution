@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AgentConfigs xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <AgentConfig>
+    <Id>1</Id>
+    <Name>TestAgentConf</Name>
+    <ConnectionString>Server=demosrv;Database=webpos;User Id=sa;Password=hitprotel;TrustServerCertificate=True;</ConnectionString>
+    <TablesOrViews>Accounts (BASE TABLE)</TablesOrViews>
+    <CreatedOn>2025-04-10T19:58:59.6172287Z</CreatedOn>
+    <Queries />
+  </AgentConfig>
+  <AgentConfig>
+    <Id>2</Id>
+    <Name>Divanis</Name>
+    <ConnectionString>server=23.101.76.139;user id=proteluser;password=protel915930;database=protel;TrustServerCertificate=True;</ConnectionString>
+    <TablesOrViews>HitIA_3 (BASE TABLE)</TablesOrViews>
+    <CreatedOn>2025-04-11T08:39:48.3065724Z</CreatedOn>
+    <Queries />
+  </AgentConfig>
+  <AgentConfig>
+    <Id>3</Id>
+    <Name>TestAgentConf3</Name>
+    <ConnectionString>server=23.101.76.139;user id=proteluser;password=protel915930;database=protel;TrustServerCertificate=True;</ConnectionString>
+    <TablesOrViews>Acropolis_Report (VIEW)</TablesOrViews>
+    <CreatedOn>2025-04-11T10:06:10.6266818Z</CreatedOn>
+    <Queries />
+  </AgentConfig>
+</AgentConfigs>

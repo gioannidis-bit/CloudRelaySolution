@@ -1,0 +1,30 @@
+{
+  "2e1116e1-09c3-4ead-9a7e-cca4fc86b566": {
+    "Connections": [
+      {
+        "Id": "7a6776e4-48d5-4142-9509-a8f8b65f39fb",
+        "ConnectionString": "server=demosrv;user id=proteluser;password=protel915930;TrustServerCertificate=True;",
+        "Queries": [
+          "select * from webpos.dbo.accounts",
+          "SELECT TOP (1000) [date]      ,[OccPerDay]      ,[OccPerMonth]  FROM [Protel].[proteluser].[hitstat_occupancy]",
+          "SELECT  [mpehotel] ,[stationid] ,[leistacc]  ,[buchnr] ,[datum]   ,[anzahl]  ,[ukto]   ,[artikel]  ,[summe]   ,[katnr]  ,[kontinnr] ,[substatid]   ,[kurs] ,[_del]  FROM [Protel].[proteluser].[ukfuture]",
+          "select  top 3000 * from protel.proteluser.hitia_3 order by reser"
+        ]
+      }
+    ],
+    "CustomAgentName": "DEMOSrV tEST"
+  },
+  "51034aa4-3125-488b-b64d-2217a24f34e5": {
+    "Connections": [
+      {
+        "Id": "d0bf0dcc-039b-4aa0-b9f5-da24d597654a",
+        "ConnectionString": "server=demosrv;user id=sa;password=hitprotel;TrustServerCertificate=True;",
+        "Queries": [
+          "select * from webpos.dbo.accounts",
+          "select * from webpos.dbo.clientpos"
+        ]
+      }
+    ],
+    "CustomAgentName": "debug"
+  }
+}
