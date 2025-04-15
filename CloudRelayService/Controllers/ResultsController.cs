@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using CloudRelayService.Hubs; // Make sure this namespace matches your project
 using Newtonsoft.Json;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.AspNetCore.SignalR.Client;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 
