@@ -5,6 +5,10 @@
     ViewData["Title"] = "Edit Agent Configuration";
 }
 
+
+<div class="container">
+    <div class="content-box">
+
 <h1>Edit Agent Configuration</h1>
 <p><strong>Agent ID:</strong> @Model.AgentId</p>
 <p><strong>Computer Name:</strong> @Model.DisplayPrimaryName</p>
@@ -39,6 +43,11 @@
     <button id="testConnectionBtn" type="button" class="btn btn-secondary">Test Connection</button>
     <p id="testConnectionResult" class="mt-2 text-info"></p>
 </div>
+
+
+    </div>
+</div>
+
 
 @section Scripts {
         <partial name="_ValidationScriptsPartial" />

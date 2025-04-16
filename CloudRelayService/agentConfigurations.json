@@ -2,7 +2,7 @@
   "2e1116e1-09c3-4ead-9a7e-cca4fc86b566": {
     "Connections": [
       {
-        "Id": "168c0dd1-7d6d-43a9-af24-0516737a6ab4",
+        "Id": "e9b5dcc8-76e0-48a6-81db-e59a38a7ac90",
         "ConnectionString": "server=demosrv;user id=sa;password=hitprotel;TrustServerCertificate=True;",
         "Queries": [
           "select * from webpos.dbo.accounts",

@@ -7,3 +7,44 @@ body {
     background-color: #f0f0f0;
     */
 }
+
+    .content-box
+
+{
+    /* Slightly translucent white background */
+    background-color: rgba(255, 255, 255, 0.9);
+    /* Add some padding to create space inside the box */
+    padding: 2rem;
+    /* Round the corners */
+    border-radius: 8px;
+    /* Give it a soft shadow */
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+    /* Limit the width so it doesn't stretch too far on large screens */
+    max-width: 1100px;
+    /* Center the box horizontally */
+    margin: 3rem auto;
+}
+
+.logo-box {
+    /* Slightly translucent white background */
+    background-color: rgba(255, 255, 255, 0.9);
+    /* Add some padding to create space inside the box */
+    padding: 1.5rem;
+    /* Round the corners */
+    border-radius: 8px;
+    /* Give it a soft shadow */
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+    /* Limit the width so it doesn't stretch too far on large screens */
+    max-width: 150px;
+    /* Center the box horizontally */
+    margin: 3rem  0rem auto;
+}
+
+.rounded-logo {
+    border-radius: 8px; /* Adjust to taste */
+    max-width:100px; /* Limit its size if desired */
+    height: auto; /* Keep aspect ratio */
+}
+
+
+

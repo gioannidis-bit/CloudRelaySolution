@@ -5,6 +5,9 @@
     ViewData["Title"] = "Agents Dashboard";
 }
 
+
+<div class="container">
+    <div class="content-box">
 <h1>@ViewData["Title"]</h1>
 
 <table class="table table-bordered" id="agentsTable">
@@ -35,22 +38,7 @@
     </tbody>
 </table>
 
-<!-- Container for live query results (formatted) -->
-<div class="mt-4">
-    <h4>Live Query Results</h4>
-    <pre id="queryResults" style="white-space: pre-wrap; background-color: #f8f8f8; padding: 10px;"></pre>
-</div>
-
-<div class="mt-3">
-    <h4>Live Test Connection Result</h4>
-    <pre id="testResult" style="white-space: pre-wrap; background-color: #f0f0f0; padding: 10px;"></pre>
-</div>
-
-<!-- Νέα ενότητα για Streaming -->
-<div class="mt-4">
-    <h4>Stream Agent Data</h4>
-    <button id="startStream" class="btn btn-success mb-2">Start Streaming</button>
-    <pre id="streamOutput" style="white-space: pre-wrap; background-color: #e9ecef; padding: 10px;"></pre>
+    </div>
 </div>
 
 @section Scripts {
@@ -133,26 +121,8 @@
             setInterval(loadAgents, 10000);
 
 
-        // Νέος κώδικας για streaming:
-        document.getElementById("startStream").addEventListener("click", function () {
-            // Καλέστε τη μέθοδο streaming "StreamAgentData" (παράμετρος, π.χ., "1" για queryIndex)
-            const stream = connection.stream("StreamAgentData", "3");
-            const streamOutput = document.getElementById("streamOutput");
-            streamOutput.textContent = ""; // Καθαρίζουμε την προηγούμενη έξοδο
-            stream.subscribe({
-                next: chunk => {
-                    console.log("Received chunk:", chunk);
-                    streamOutput.textContent += chunk + "\n";
-                },
-                complete: () => {
-                    console.log("Streaming complete");
-                },
-                error: err => {
-                    console.error("Streaming error:", err);
-                    streamOutput.textContent += "Streaming error: " + err;
-                }
-            });
-        });
+      
+        
 
         </script>
 }
