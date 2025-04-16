@@ -1,0 +1,9 @@
+body {
+    margin: 0;
+    padding: 0;
+    background: url('/images/json.webp') no-repeat center center fixed;
+    background-size: cover;
+    /* You can add a background-color for a fallback if needed:
+    background-color: #f0f0f0;
+    */
+}
